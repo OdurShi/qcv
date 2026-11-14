@@ -1,9 +1,14 @@
+"""Freeze finite numeric answer alphabets from calibration annotations.
+
+Alphabets must be fixed before test inference; calibration and test runs must
+use the same frozen grammar.
+"""
+
 from __future__ import annotations
 
 import argparse
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -14,21 +19,21 @@ from qcv.utils import canonical_decimal, read_jsonl
 def numeric_sort(values: set[str]) -> list[str]:
     try:
         return [item for _, item in sorted((Decimal(item), item) for item in values)]
-    except Exception:
+    except InvalidOperation:
         return sorted(values)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Freeze role alphabets from a disjoint training/calibration JSONL before test evaluation"
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--input", required=True, help="Compiled JSONL with compiled and gold fields"
     )
-    parser.add_argument("--input", required=True, help="Compiled JSONL with compiled and gold fields")
     parser.add_argument("--base-grammar", required=True)
     parser.add_argument("--output-grammar", required=True)
     parser.add_argument(
         "--derive-chart-arithmetic",
         action="store_true",
-        help="Derive signed_difference and sum_value closures from first_value and second_value per record",
+        help="add the difference and sum of first_value and second_value of every record",
     )
     args = parser.parse_args()
 
@@ -71,7 +76,9 @@ def main() -> None:
 
     output = Path(args.output_grammar)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(yaml.safe_dump(grammar, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    output.write_text(
+        yaml.safe_dump(grammar, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":

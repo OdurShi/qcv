@@ -1,9 +1,18 @@
+"""Schema of raw input records (one JSON object per line)."""
+
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 
 def validate_raw_record(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and normalise a raw record.
+
+    Required: ``instance_id`` (or ``id``), ``task`` and ``question``. Optional:
+    ``answer`` (target answer, evaluation only), ``gold`` (answers of the typed
+    variables, calibration and analysis only), ``media`` and ``metadata``.
+    """
     instance_id = str(value.get("instance_id", value.get("id", ""))).strip()
     task = str(value.get("task", "")).strip()
     question = str(value.get("question", "")).strip()

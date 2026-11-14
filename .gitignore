@@ -1,9 +1,43 @@
-
+# Python
 __pycache__/
 *.py[cod]
-.DS_Store
-.venv/
-.env
+*.egg-info/
 build/
 dist/
-*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+venv/
+.env
+
+# Run outputs and model weights (root-anchored: qcv/data/ is a Python package)
+/runs/
+/outputs/
+/checkpoints/
+*.safetensors
+*.pt
+*.bin
+
+# data/: the README, the synthetic records and the compact CLEVR records are tracked;
+# downloaded archives, their unpacked contents and intermediate files are not
+/data/*
+!/data/README.md
+!/data/synthetic/
+!/data/clevr/
+/data/clevr/*
+!/data/clevr/MANIFEST.json
+!/data/clevr/LICENSE.txt
+!/data/clevr/ATTRIBUTION.md
+!/data/clevr/clevr_val_calibration.jsonl.gz
+!/data/clevr/clevr_val_test.jsonl.gz
+/datasets/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

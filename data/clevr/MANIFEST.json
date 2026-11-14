@@ -1,0 +1,55 @@
+{
+  "attribution": "CLEVR (c) 2017, Facebook, Inc.",
+  "commands": [
+    "python scripts/download_data.py clevr --data-dir data",
+    "python scripts/build_clevr_slice.py --data-dir data --split val --calibration-fraction 0.2 --seed 0"
+  ],
+  "dataset": "CLEVR v1.0 val questions compiled by the CLEVR grammar",
+  "files": {
+    "clevr_val_calibration.jsonl.gz": {
+      "bytes": 77200,
+      "records": 3148,
+      "rules": {
+        "count_complement": 337,
+        "existence_count": 2811
+      },
+      "sha256": "08d92e8783ebf87768eaf8b15ee93695982489731be7daf00dac90a0244e274a",
+      "uncompressed_sha256": "13c791f2708a9c4ec0d64a8889d0c9a1d5443e6778676bf92e673d47732b4dd8"
+    },
+    "clevr_val_test.jsonl.gz": {
+      "bytes": 284599,
+      "records": 12575,
+      "rules": {
+        "count_complement": 1355,
+        "existence_count": 11220
+      },
+      "sha256": "27e889f128448880612308fc5ee4a4a79786fbf7c331c53568bd9c2c7f306dec",
+      "uncompressed_sha256": "f32a83c3390a48eeb129e3c34d52f50e1cfd5d85c6d0d93c0d5fb136e0992bc6"
+    }
+  },
+  "grammar": {
+    "file": "qcv/grammars/clevr.yaml",
+    "sha256": "d67bda86c22d5b1a75f034655b7e02f8ccbdf90aee473c8cc169ea9ef1166baa"
+  },
+  "licence": "CC BY 4.0",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "partition": {
+    "calibration_fraction": 0.2,
+    "method": "hash of seed and instance_id (scripts/split_records.py)",
+    "seed": 0
+  },
+  "selection": {
+    "compiled": 15723,
+    "questions": 149991,
+    "records": 15723,
+    "split": "val"
+  },
+  "source": {
+    "archive": {
+      "bytes": 89363837,
+      "sha256": "d4435dceab30022b64f7d34b3ec217162bfc1c2950c79999784750ced22674c4",
+      "url": "https://dl.fbaipublicfiles.com/clevr/CLEVR_v1.0_no_images.zip"
+    },
+    "homepage": "https://cs.stanford.edu/people/jcjohns/clevr/"
+  }
+}

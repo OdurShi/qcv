@@ -1,16 +1,25 @@
+"""Typed records shared by every stage of the QCV pipeline."""
+
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 
-from .utils import alphabet_fingerprint, json_dump, json_load
+from .utils import alphabet_fingerprint, json_dump, json_load, stable_hash
+
+ANSWER_TYPES = frozenset({"categorical", "boolean", "numeric", "relation"})
+METRIC_MODES = ("full", "diagonal", "identity")
 
 
 @dataclass(frozen=True)
 class RoleSpec:
+    """Canonical role: a finite answer alphabet in a fixed coordinate order."""
+
     name: str
     alphabet: tuple[str, ...]
     answer_type: str = "categorical"
@@ -23,21 +32,26 @@ class RoleSpec:
             raise ValueError(f"Role {self.name!r} has an empty alphabet")
         if len(set(self.alphabet)) != len(self.alphabet):
             raise ValueError(f"Role {self.name!r} has duplicate canonical answers")
-        if self.answer_type not in {"categorical", "boolean", "numeric", "relation"}:
+        if self.answer_type not in ANSWER_TYPES:
             raise ValueError(f"Unsupported answer_type {self.answer_type!r}")
 
-    @property
+    @cached_property
     def fingerprint(self) -> str:
         return alphabet_fingerprint(self.alphabet)
 
-    @property
+    @cached_property
     def key(self) -> str:
+        """Role name plus alphabet fingerprint; identifies a calibration unit."""
         return f"{self.name}:{self.fingerprint}"
+
+    @cached_property
+    def _answer_positions(self) -> dict[str, int]:
+        return {answer: index for index, answer in enumerate(self.alphabet)}
 
     def answer_index(self, answer: str) -> int:
         try:
-            return self.alphabet.index(answer)
-        except ValueError as exc:
+            return self._answer_positions[answer]
+        except KeyError as exc:
             raise ValueError(
                 f"Answer {answer!r} is not in the alphabet for role {self.name!r}"
             ) from exc
@@ -51,21 +65,21 @@ class RoleSpec:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "RoleSpec":
+    def from_dict(cls, value: Mapping[str, Any]) -> RoleSpec:
         return cls(
             name=str(value["name"]),
             alphabet=tuple(str(item) for item in value["alphabet"]),
             answer_type=str(value.get("answer_type", "categorical")),
             numeric_precision=(
-                None
-                if value.get("numeric_precision") is None
-                else int(value["numeric_precision"])
+                None if value.get("numeric_precision") is None else int(value["numeric_precision"])
             ),
         )
 
 
 @dataclass(frozen=True)
 class QuestionSpec:
+    """One typed question: the target ``q0`` or a compiled auxiliary."""
+
     question_id: str
     text: str
     variable: str
@@ -92,7 +106,7 @@ class QuestionSpec:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "QuestionSpec":
+    def from_dict(cls, value: Mapping[str, Any]) -> QuestionSpec:
         return cls(
             question_id=str(value["question_id"]),
             text=str(value["text"]),
@@ -105,6 +119,8 @@ class QuestionSpec:
 
 @dataclass(frozen=True)
 class ConstraintSpec:
+    """Executable Boolean predicate ``g_r`` over named answer variables."""
+
     kind: str
     variables: tuple[str, ...]
     parameters: Mapping[str, Any] = field(default_factory=dict)
@@ -125,7 +141,7 @@ class ConstraintSpec:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "ConstraintSpec":
+    def from_dict(cls, value: Mapping[str, Any]) -> ConstraintSpec:
         return cls(
             kind=str(value["kind"]),
             variables=tuple(str(item) for item in value["variables"]),
@@ -135,6 +151,8 @@ class ConstraintSpec:
 
 @dataclass(frozen=True)
 class CompiledInstance:
+    """Compiler output for one target: ordered auxiliary pool plus constraints."""
+
     instance_id: str
     task: str
     target: QuestionSpec
@@ -162,7 +180,23 @@ class CompiledInstance:
 
     @property
     def all_questions(self) -> tuple[QuestionSpec, ...]:
-        return (self.target,) + self.auxiliaries
+        return (self.target, *self.auxiliaries)
+
+    @cached_property
+    def structure_key(self) -> str:
+        """Hash of everything that determines the pool-level feasible code.
+
+        Instance identifiers and surface texts are excluded, so instances that
+        share a rule, roles and constraints share codebooks and selections.
+        """
+        parts: list[str] = [self.task, self.rule_name, self.compiler_version]
+        for question in self.all_questions:
+            parts.extend([question.question_id, question.variable, question.role.key])
+        for constraint in self.constraints:
+            parts.append(constraint.kind)
+            parts.extend(constraint.variables)
+            parts.append(repr(sorted(dict(constraint.parameters).items())))
+        return stable_hash(parts, length=40)
 
     def question_by_id(self, question_id: str) -> QuestionSpec:
         for question in self.all_questions:
@@ -181,9 +215,7 @@ class CompiledInstance:
         unknown = selected.difference({q.question_id for q in self.auxiliaries})
         if unknown:
             raise KeyError(f"Unknown auxiliary question IDs: {sorted(unknown)}")
-        return (self.target,) + tuple(
-            q for q in self.auxiliaries if q.question_id in selected
-        )
+        return (self.target, *(q for q in self.auxiliaries if q.question_id in selected))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -198,7 +230,7 @@ class CompiledInstance:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "CompiledInstance":
+    def from_dict(cls, value: Mapping[str, Any]) -> CompiledInstance:
         return cls(
             instance_id=str(value["instance_id"]),
             task=str(value["task"]),
@@ -217,6 +249,8 @@ class CompiledInstance:
 
 @dataclass(frozen=True)
 class QuestionScores:
+    """Length-normalised log-scores of every alphabet entry for one question (Eq. 2)."""
+
     question_id: str
     mean_logprobs: tuple[float, ...]
 
@@ -236,7 +270,7 @@ class QuestionScores:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "QuestionScores":
+    def from_dict(cls, value: Mapping[str, Any]) -> QuestionScores:
         return cls(
             question_id=str(value["question_id"]),
             mean_logprobs=tuple(float(item) for item in value["mean_logprobs"]),
@@ -245,6 +279,13 @@ class QuestionScores:
 
 @dataclass(frozen=True)
 class ScoreRecord:
+    """One line of a score file: compiled instance, scores and optional annotations.
+
+    ``gold`` (answers of the typed variables) is read only by calibration and by
+    the analysis metrics; ``target_answer`` only by evaluation. Selection and
+    decoding never access either field.
+    """
+
     instance_id: str
     task: str
     compiled: CompiledInstance
@@ -282,11 +323,8 @@ class ScoreRecord:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "ScoreRecord":
-        scores = {
-            str(key): QuestionScores.from_dict(item)
-            for key, item in value["scores"].items()
-        }
+    def from_dict(cls, value: Mapping[str, Any]) -> ScoreRecord:
+        scores = {str(key): QuestionScores.from_dict(item) for key, item in value["scores"].items()}
         return cls(
             instance_id=str(value["instance_id"]),
             task=str(value["task"]),
@@ -301,8 +339,10 @@ class ScoreRecord:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class CovarianceModel:
+    """Shrunk residual covariance and whitening transform of one role signature (Eq. 3)."""
+
     signature: str
     role_keys: tuple[str, ...]
     dimension: int
@@ -323,9 +363,22 @@ class CovarianceModel:
         if self.sample_count < 2:
             raise ValueError("A covariance model requires at least two samples")
 
+    @cached_property
+    def fingerprint(self) -> str:
+        """Content hash used to key geometry caches across calibration runs."""
+        payload = np.ascontiguousarray(self.covariance, dtype=np.float64).tobytes()
+        return stable_hash([self.signature, payload.hex()], length=32)
+
+    @cached_property
+    def is_positive_definite(self) -> bool:
+        eigenvalues = np.linalg.eigvalsh(np.asarray(self.covariance, dtype=np.float64))
+        return bool(float(np.min(eigenvalues)) > 0.0)
+
 
 @dataclass
 class CalibrationArtifacts:
+    """Everything fitted on the calibration split and frozen for test time."""
+
     temperatures: dict[str, float]
     role_accuracy: dict[str, float]
     covariances: dict[str, CovarianceModel]
@@ -371,7 +424,7 @@ class CalibrationArtifacts:
         json_dump(directory / "metadata.json", self.metadata)
 
     @classmethod
-    def load(cls, directory: str | Path) -> "CalibrationArtifacts":
+    def load(cls, directory: str | Path) -> CalibrationArtifacts:
         directory = Path(directory)
         temperatures = {
             str(k): float(v) for k, v in json_load(directory / "temperatures.json").items()
@@ -380,21 +433,21 @@ class CalibrationArtifacts:
             str(k): float(v) for k, v in json_load(directory / "role_accuracy.json").items()
         }
         covariance_index = json_load(directory / "covariance_index.json")
-        arrays = np.load(directory / "covariances.npz")
         covariances: dict[str, CovarianceModel] = {}
-        for signature, info in covariance_index.items():
-            prefix = str(info["prefix"])
-            covariances[str(signature)] = CovarianceModel(
-                signature=str(signature),
-                role_keys=tuple(str(item) for item in info["role_keys"]),
-                dimension=int(info["dimension"]),
-                sample_count=int(info["sample_count"]),
-                alpha_lw=float(info["alpha_lw"]),
-                alpha=float(info["alpha"]),
-                mu=float(info["mu"]),
-                covariance=np.asarray(arrays[f"{prefix}_covariance"], dtype=np.float64),
-                whitening=np.asarray(arrays[f"{prefix}_whitening"], dtype=np.float64),
-            )
+        with np.load(directory / "covariances.npz") as arrays:
+            for signature, info in covariance_index.items():
+                prefix = str(info["prefix"])
+                covariances[str(signature)] = CovarianceModel(
+                    signature=str(signature),
+                    role_keys=tuple(str(item) for item in info["role_keys"]),
+                    dimension=int(info["dimension"]),
+                    sample_count=int(info["sample_count"]),
+                    alpha_lw=float(info["alpha_lw"]),
+                    alpha=float(info["alpha"]),
+                    mu=float(info["mu"]),
+                    covariance=np.asarray(arrays[f"{prefix}_covariance"], dtype=np.float64),
+                    whitening=np.asarray(arrays[f"{prefix}_whitening"], dtype=np.float64),
+                )
         return cls(
             temperatures=temperatures,
             role_accuracy=role_accuracy,
@@ -403,8 +456,21 @@ class CalibrationArtifacts:
         )
 
 
+def _optional_float(value: Any) -> float | None:
+    return None if value is None else float(value)
+
+
 @dataclass(frozen=True)
 class Prediction:
+    """Final answer for one instance together with the provenance of the decision.
+
+    ``measurements`` lists the hard answer of each of the ``budget`` question
+    evaluations as ``(question_id, answer)`` pairs, target first. They are the
+    arg-max answers of the calibrated distributions for QCV variants and the
+    sampled answers for the repeated-target baseline; the failure-geometry
+    metrics are computed from them.
+    """
+
     instance_id: str
     covered: bool
     target_only_answer: str
@@ -415,6 +481,10 @@ class Prediction:
     target_class_separation: float | None
     energies: Mapping[str, float] = field(default_factory=dict)
     reason: str = ""
+    budget: int | None = None
+    selection: str = ""
+    metric: str = ""
+    measurements: tuple[tuple[str, str], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -428,27 +498,32 @@ class Prediction:
             "target_class_separation": self.target_class_separation,
             "energies": dict(self.energies),
             "reason": self.reason,
+            "budget": self.budget,
+            "selection": self.selection,
+            "metric": self.metric,
+            "measurements": [list(item) for item in self.measurements],
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "Prediction":
+    def from_dict(cls, value: Mapping[str, Any]) -> Prediction:
         return cls(
             instance_id=str(value["instance_id"]),
             covered=bool(value["covered"]),
             target_only_answer=str(value["target_only_answer"]),
             final_answer=str(value["final_answer"]),
-            selected_question_ids=tuple(str(item) for item in value.get("selected_question_ids", [])),
-            target_margin=(
-                None if value.get("target_margin") is None else float(value["target_margin"])
+            selected_question_ids=tuple(
+                str(item) for item in value.get("selected_question_ids", [])
             ),
-            projection_gap=(
-                None if value.get("projection_gap") is None else float(value["projection_gap"])
-            ),
-            target_class_separation=(
-                None
-                if value.get("target_class_separation") is None
-                else float(value["target_class_separation"])
-            ),
+            target_margin=_optional_float(value.get("target_margin")),
+            projection_gap=_optional_float(value.get("projection_gap")),
+            target_class_separation=_optional_float(value.get("target_class_separation")),
             energies={str(k): float(v) for k, v in value.get("energies", {}).items()},
             reason=str(value.get("reason", "")),
+            budget=None if value.get("budget") is None else int(value["budget"]),
+            selection=str(value.get("selection", "")),
+            metric=str(value.get("metric", "")),
+            measurements=tuple(
+                (str(question_id), str(answer))
+                for question_id, answer in value.get("measurements", [])
+            ),
         )

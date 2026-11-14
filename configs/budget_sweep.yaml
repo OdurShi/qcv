@@ -1,0 +1,17 @@
+# Budget scaling audit (paper Fig. 5 and the "Scaling across test-time budgets"
+# paragraph): five selection methods at B in {3, 5, 7, 9}.
+#   python scripts/run_ablation_sweep.py --config configs/budget_sweep.yaml \
+#       --scores <test_scores.jsonl> --artifacts <calibration_artifacts> --output-dir <dir>
+# Calibrate with `qcv calibrate --max-budget 9` first. A budget B is only covered
+# for rules whose grammar provides at least B - 1 auxiliaries.
+budgets: [3, 5, 7, 9]
+random_seed: 0
+bootstrap_replicates: 10000
+reference: qcv
+baselines: [target-only, repeated-target]
+methods:
+  fixed-probes: {selection: fixed, metric: full}
+  random-qcv: {selection: random, metric: full}
+  reliability-qcv: {selection: reliability, metric: full}
+  diagonal-qcv: {selection: qcv, metric: diagonal}
+  qcv: {selection: qcv, metric: full}

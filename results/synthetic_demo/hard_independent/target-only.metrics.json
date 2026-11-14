@@ -1,0 +1,29 @@
+{
+  "correct_measurement_survival": null,
+  "correction_rate": 0.0,
+  "corruption_rate": 0.0,
+  "coverage": 1.0,
+  "covered_accuracy": 0.701,
+  "effective_measurements": null,
+  "gap_error_auroc": null,
+  "macro_overall_accuracy": 0.701,
+  "margin_error_auroc": null,
+  "mean_error_correlation": null,
+  "overall_accuracy": 0.701,
+  "per_task": {
+    "synthetic": {
+      "correction_rate": 0.0,
+      "corruption_rate": 0.0,
+      "coverage": 1.0,
+      "covered_accuracy": 0.701,
+      "overall_accuracy": 0.701,
+      "target_only_accuracy": 0.701,
+      "total": 2000,
+      "uncovered_accuracy": null
+    }
+  },
+  "separation_audit": null,
+  "target_only_accuracy": 0.701,
+  "total": 2000,
+  "uncovered_accuracy": null
+}

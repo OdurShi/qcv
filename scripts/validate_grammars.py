@@ -1,11 +1,11 @@
+"""Compile one example question per rule of every shipped grammar and report code sizes."""
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from qcv.codebook import build_codebook
-from qcv.compilers import GrammarCompiler, load_task_grammar
-
+from qcv.compilers import CompilerRegistry
 
 CASES = {
     "clevr": [
@@ -31,33 +31,45 @@ CASES = {
         "Did event a happen before event b",
         "What is the temporal relation of event a to event b",
     ],
+    "synthetic": [
+        "How many more red cubes than blue spheres are there?",
+        "What is the spatial relation of the red cube relative to the blue sphere?",
+    ],
 }
 
 
-def main() -> None:
-    root = Path(__file__).resolve().parents[1]
+def validate() -> list[dict[str, object]]:
+    registry = CompilerRegistry.from_directory()
     results: list[dict[str, object]] = []
     for task, questions in CASES.items():
-        compiler = GrammarCompiler(load_task_grammar(root / "configs" / f"{task}.yaml"))
+        compiler = registry.compiler_for(task)
         for index, question in enumerate(questions):
             result = compiler.compile(f"{task}-{index}", question)
             if result.compiled is None:
                 raise RuntimeError(
-                    f"Grammar validation failed for {task!r}, question {question!r}: {result.reason}"
+                    f"Grammar validation failed for {task!r}: {question!r} -> {result.reason}"
                 )
             codebook = build_codebook(result.compiled, result.compiled.all_questions)
-            if codebook.codewords.shape[0] == 0:
-                raise RuntimeError(f"Empty feasible codebook for {task!r}, rule {result.compiled.rule_name!r}")
+            if codebook.size == 0:
+                raise RuntimeError(
+                    f"Empty feasible codebook for {task!r}: {result.compiled.rule_name}"
+                )
             results.append(
                 {
                     "task": task,
                     "rule": result.compiled.rule_name,
                     "question": question,
                     "auxiliaries": len(result.compiled.auxiliaries),
-                    "codewords": int(codebook.codewords.shape[0]),
+                    "codewords": codebook.size,
+                    "target_classes": len(codebook.target_classes),
                     "dimension": codebook.dimension,
                 }
             )
+    return results
+
+
+def main() -> None:
+    results = validate()
     print(json.dumps({"validated": len(results), "cases": results}, ensure_ascii=False, indent=2))
 
 

@@ -1,11 +1,30 @@
+"""Executable answer-space predicates ``g_r`` used to define feasible codes (Eq. 1).
+
+Arithmetic structure of numeric answers is expressed here, as exact decimal
+predicates over finite alphabets, and never as a scalar distance between answers.
+"""
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Mapping
 
 from .types import ConstraintSpec
 from .utils import decimal_value
 
+CONSTRAINT_KINDS = (
+    "sum_eq",
+    "difference_eq",
+    "exists_iff_positive",
+    "threshold_boolean",
+    "inverse_relation",
+    "relation_boolean",
+    "comparison_from_values",
+    "equal",
+    "not_equal",
+    "boolean_not",
+    "one_hot_relations",
+)
 
 _TRUE_VALUES = {"yes", "true", "1"}
 _FALSE_VALUES = {"no", "false", "0"}
@@ -25,7 +44,7 @@ def _numeric_equal(left: Decimal, right: Decimal, tolerance: Decimal) -> bool:
 
 
 def evaluate_constraint(constraint: ConstraintSpec, assignment: Mapping[str, str]) -> bool:
-    """Evaluate one executable answer-space predicate."""
+    """Evaluate one predicate ``g_r(a)`` on a complete assignment of its variables."""
     if any(variable not in assignment for variable in constraint.variables):
         raise KeyError(
             f"Constraint {constraint.kind!r} requires variables {constraint.variables}, "
@@ -137,10 +156,3 @@ def evaluate_constraint(constraint: ConstraintSpec, assignment: Mapping[str, str
         return booleans == expected
 
     raise ValueError(f"Unsupported constraint kind {kind!r}")
-
-
-def active_constraints(
-    constraints: tuple[ConstraintSpec, ...], variables: set[str]
-) -> tuple[ConstraintSpec, ...]:
-    """Return predicates executable for the selected question set."""
-    return tuple(c for c in constraints if set(c.variables).issubset(variables))

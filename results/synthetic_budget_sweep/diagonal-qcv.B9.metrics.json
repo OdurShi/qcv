@@ -1,0 +1,50 @@
+{
+  "correct_measurement_survival": 0.740909090909091,
+  "correction_rate": 0.6390243902439025,
+  "corruption_rate": 0.0005571030640668524,
+  "coverage": 0.7515,
+  "covered_accuracy": 0.9767132401862941,
+  "effective_measurements": 6.614829610819627,
+  "gap_error_auroc": null,
+  "macro_overall_accuracy": 0.9625,
+  "margin_error_auroc": 0.9586804203970416,
+  "mean_error_correlation": 0.04507240793623465,
+  "overall_accuracy": 0.9625,
+  "per_task": {
+    "synthetic": {
+      "correction_rate": 0.6390243902439025,
+      "corruption_rate": 0.0005571030640668524,
+      "coverage": 0.7515,
+      "covered_accuracy": 0.9767132401862941,
+      "overall_accuracy": 0.9625,
+      "target_only_accuracy": 0.8975,
+      "total": 2000,
+      "uncovered_accuracy": 0.9195171026156942
+    }
+  },
+  "separation_audit": {
+    "bins": {
+      "0.8<=kappa<1.2": {
+        "correction_rate": 1.0,
+        "examples": 400,
+        "final_accuracy": 1.0
+      },
+      "kappa<0.8": {
+        "correction_rate": 1.0,
+        "examples": 919,
+        "final_accuracy": 1.0
+      },
+      "kappa>=1.2": {
+        "correction_rate": 0.7364341085271318,
+        "examples": 184,
+        "final_accuracy": 0.8097826086956522
+      }
+    },
+    "examples": 1503,
+    "sufficient_condition_rate": 0.759148369926813,
+    "sufficient_condition_violations": 0
+  },
+  "target_only_accuracy": 0.8975,
+  "total": 2000,
+  "uncovered_accuracy": 0.9195171026156942
+}

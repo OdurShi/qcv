@@ -1,35 +1,44 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "question-code-verification"
 version = "1.0.0"
-description = "Question-Code Verification for multimodal test-time correction"
+description = "Question-Code Verification (QCV): test-time correction of multimodal reasoning with frozen VLMs"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
+keywords = ["vision-language models", "test-time scaling", "visual question answering", "verification"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
   "numpy>=1.26",
   "scipy>=1.11",
-  "scikit-learn>=1.4",
   "PyYAML>=6.0",
   "Pillow>=10.0",
-  "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]
 vlm = [
   "torch>=2.2",
   "transformers>=4.49",
-  "accelerate>=0.28",
-  "safetensors>=0.4",
   "imageio[ffmpeg]>=2.34",
 ]
 dev = [
   "pytest>=8.0",
   "ruff>=0.5",
+  "scikit-learn>=1.4",
 ]
+
+[project.urls]
+Repository = "https://github.com/OdurShi/qcv"
 
 [project.scripts]
 qcv = "qcv.cli:main"
@@ -38,7 +47,7 @@ qcv = "qcv.cli:main"
 include = ["qcv*"]
 
 [tool.setuptools.package-data]
-qcv = ["configs/*.yaml"]
+qcv = ["grammars/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -46,3 +55,10 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "RUF"]
+ignore = [
+  "RUF002",  # docstrings use the paper's notation (e.g. the set symbol in "{q0} ∪ Q")
+]

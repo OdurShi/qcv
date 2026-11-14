@@ -1,0 +1,14 @@
+{
+  "correct_measurement_survival": {
+    "cells": 20,
+    "spearman_r": 0.0760749988384061
+  },
+  "effective_measurements": {
+    "cells": 20,
+    "spearman_r": 0.6519627400451403
+  },
+  "mean_error_correlation": {
+    "cells": 20,
+    "spearman_r": -0.1818192472237906
+  }
+}

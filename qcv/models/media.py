@@ -1,7 +1,10 @@
+"""Media loading for the VLM scorer: images, videos and explicit frame lists."""
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -12,7 +15,8 @@ def load_image(path: str | Path) -> Image.Image:
     return image.convert("RGB")
 
 
-def _uniform_indices(length: int, count: int) -> np.ndarray:
+def uniform_frame_indices(length: int, count: int) -> np.ndarray:
+    """Indices of ``count`` frames spread uniformly over ``length`` (all frames if fewer)."""
     if length < 1:
         raise ValueError("Video contains no frames")
     if count < 1:
@@ -30,7 +34,7 @@ def load_video_frames(path: str | Path, frame_count: int = 32) -> list[Image.Ima
             for item in path.iterdir()
             if item.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
         )
-        indices = _uniform_indices(len(frame_paths), frame_count)
+        indices = uniform_frame_indices(len(frame_paths), frame_count)
         return [load_image(frame_paths[int(index)]) for index in indices]
     try:
         import imageio.v3 as iio
@@ -42,25 +46,33 @@ def load_video_frames(path: str | Path, frame_count: int = 32) -> list[Image.Ima
     nframes = int(metadata.get("nframes", 0))
     if nframes <= 0:
         frames_array = list(iio.imiter(path, plugin="ffmpeg"))
-        indices = _uniform_indices(len(frames_array), frame_count)
+        indices = uniform_frame_indices(len(frames_array), frame_count)
         return [Image.fromarray(frames_array[int(index)]).convert("RGB") for index in indices]
-    indices = _uniform_indices(nframes, frame_count)
-    return [Image.fromarray(iio.imread(path, index=int(index), plugin="ffmpeg")).convert("RGB") for index in indices]
+    indices = uniform_frame_indices(nframes, frame_count)
+    return [
+        Image.fromarray(iio.imread(path, index=int(index), plugin="ffmpeg")).convert("RGB")
+        for index in indices
+    ]
 
 
 def load_media(media: Mapping[str, Any]) -> tuple[str, Any]:
+    """Return ``("image", PIL.Image)`` or ``("video", [PIL.Image, ...])`` for a media record.
+
+    ``{"type": "image", "path": ...}``, ``{"type": "video", "path": ..., "frame_count": 32}``
+    (a video file or a directory of frames) or ``{"type": "frames", "paths": [...]}``.
+    """
     media_type = str(media.get("type", "image")).lower()
-    path = media.get("path")
-    if path is None:
-        raise ValueError("Media record requires a path")
-    if media_type == "image":
-        return "image", load_image(str(path))
-    if media_type == "video":
-        frame_count = int(media.get("frame_count", 32))
-        return "video", load_video_frames(str(path), frame_count=frame_count)
     if media_type == "frames":
         paths = [str(item) for item in media.get("paths", [])]
         if not paths:
             raise ValueError("frames media requires a non-empty paths list")
         return "video", [load_image(item) for item in paths]
-    raise ValueError(f"Unsupported media type {media_type!r}")
+    if media_type not in {"image", "video"}:
+        raise ValueError(f"Unsupported media type {media_type!r}")
+    path = media.get("path")
+    if path is None:
+        raise ValueError("Media record requires a path")
+    if media_type == "image":
+        return "image", load_image(str(path))
+    frame_count = int(media.get("frame_count", 32))
+    return "video", load_video_frames(str(path), frame_count=frame_count)

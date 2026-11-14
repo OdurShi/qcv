@@ -1,0 +1,11 @@
+{
+  "accuracy_difference": -0.1155,
+  "bootstrap_95_ci": [
+    -0.1355,
+    -0.0955
+  ],
+  "bootstrap_replicates": 2000,
+  "mcnemar_exact_p": 1.4683805955720324e-30,
+  "paired_examples": 2000,
+  "seed": 0
+}

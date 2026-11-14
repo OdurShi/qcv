@@ -1,13 +1,27 @@
+"""Registry of task compilers, one per grammar file."""
+
 from __future__ import annotations
 
+from importlib import resources
 from pathlib import Path
 
 from .grammar import GrammarCompiler, load_task_grammar
 
 
+def default_grammar_directory() -> Path:
+    """Directory of the task grammars shipped as package data."""
+    return Path(str(resources.files("qcv") / "grammars"))
+
+
 class CompilerRegistry:
     def __init__(self) -> None:
         self._compilers: dict[str, GrammarCompiler] = {}
+
+    @classmethod
+    def from_directory(cls, directory: str | Path | None = None) -> CompilerRegistry:
+        registry = cls()
+        registry.register_directory(directory or default_grammar_directory())
+        return registry
 
     def register_grammar(self, path: str | Path) -> None:
         compiler = GrammarCompiler(load_task_grammar(path))

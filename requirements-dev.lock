@@ -1,0 +1,35 @@
+cloudpickle==3.1.2
+    # via joblib
+iniconfig==2.3.1
+    # via pytest
+joblib==1.6.0
+    # via scikit-learn
+narwhals==2.28.0
+    # via scikit-learn
+numpy==2.4.6
+    # via
+    #   question-code-verification (pyproject.toml)
+    #   scikit-learn
+    #   scipy
+packaging==26.3
+    # via pytest
+pillow==13.0.0
+    # via question-code-verification (pyproject.toml)
+pluggy==1.7.0
+    # via pytest
+pygments==2.21.0
+    # via pytest
+pytest==9.2.0
+    # via question-code-verification (pyproject.toml)
+pyyaml==6.0.3
+    # via question-code-verification (pyproject.toml)
+ruff==0.17.5
+    # via question-code-verification (pyproject.toml)
+scikit-learn==1.9.1
+    # via question-code-verification (pyproject.toml)
+scipy==1.17.1
+    # via
+    #   question-code-verification (pyproject.toml)
+    #   scikit-learn
+threadpoolctl==3.8.0
+    # via scikit-learn

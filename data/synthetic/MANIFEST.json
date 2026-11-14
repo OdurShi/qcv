@@ -1,0 +1,17 @@
+{
+  "calibration_size": 1500,
+  "files": {
+    "calibration_raw.jsonl": {
+      "records": 1500,
+      "sha256": "d0cd21f7852bc00bfb13629a4bcb9430a0001508f525669638ba6396fd157a88"
+    },
+    "test_raw.jsonl": {
+      "records": 2000,
+      "sha256": "86ccb42f5cbb9bb51a8d528dc49ca1f01963a46cfb63ea6eb29ccf25312037f7"
+    }
+  },
+  "generator": "qcv synth",
+  "relation_fraction": 0.25,
+  "seed": 0,
+  "test_size": 2000
+}

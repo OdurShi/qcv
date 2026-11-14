@@ -1,0 +1,20 @@
+QCV synthetic demo (simulated scores; not a result on any benchmark)
+simulator: error_rate=0.1 correlation=0.0 seed=0 | calibration=1500 test=2000 budget B=5
+calibration: 13 role temperatures, 190 covariance models, 0 unsupported signatures
+
+method            Acc_all      Cov  Acc_cov     Corr  Corrupt    rho_B    B_eff      S_B    AUROC
+-------------------------------------------------------------------------------------------------
+target-only          89.8    100.0     89.8      0.0      0.0        -        -        -        -
+repeated-target      87.4    100.0     87.4      3.4      3.0     0.39     1.94     45.0        -
+fixed-probes         98.3    100.0     98.3     89.8      0.7    -0.02     5.00     89.4     96.7
+random-qcv           96.8    100.0     96.8     85.9      2.0     0.00     4.96     88.4     92.3
+reliability-qcv      91.5    100.0     91.5     56.1      4.5     0.01     4.83     89.1     86.7
+identity-qcv         98.9    100.0     98.9     92.7      0.4    -0.01     5.00     88.8     98.9
+diagonal-qcv         99.0    100.0     99.0     92.2      0.3     0.00     4.96     88.4     98.1
+qcv                  97.8    100.0     97.8     92.2      1.6    -0.02     5.00     89.1     90.8
+exact-qcv            97.7    100.0     97.7     90.2      1.4    -0.02     5.00     89.8     91.1
+
+qcv - target-only: +8.0 points (95% bootstrap CI +6.6 to +9.4; exact McNemar p = 5.9e-30)
+qcv - diagonal-qcv: -1.2 points (95% bootstrap CI -1.8 to -0.5; exact McNemar p = 0.00039)
+Eq. (8) audit: kappa < 1 on 59.8% of 2000 covered examples; wrong answers among them: 0 (the condition guarantees 0)
+files written to runs/demo_independent

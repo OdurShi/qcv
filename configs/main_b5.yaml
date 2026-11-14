@@ -1,0 +1,21 @@
+# Default-budget comparison (paper Tables 1 and 3, B = 5): QCV, its selection and
+# decoding controls, and the baselines that can be computed from score files.
+# Run once per backbone x benchmark score file:
+#   python scripts/run_ablation_sweep.py --config configs/main_b5.yaml \
+#       --scores runs/<backbone>/<task>/test_scores.jsonl \
+#       --artifacts runs/<backbone>/<task>/calibration_artifacts \
+#       --output-dir runs/<backbone>/<task>/main_b5
+budgets: [5]
+random_seed: 0
+bootstrap_replicates: 10000
+reference: qcv
+baselines: [target-only, repeated-target]
+methods:
+  fixed-probes: {selection: fixed, metric: full}
+  random-qcv: {selection: random, metric: full}
+  reliability-qcv: {selection: reliability, metric: full}
+  diagonal-qcv: {selection: qcv, metric: diagonal}
+  qcv: {selection: qcv, metric: full}
+  # Additional diagnostics that are not rows of the paper's tables.
+  identity-qcv: {selection: qcv, metric: identity}
+  exact-qcv: {selection: exact, metric: full}

@@ -1,3 +1,9 @@
+"""Convert the official CLEVR question/scene JSON files to QCV raw records.
+
+Gold answers of the auxiliary variables (needed for calibration and for the
+analysis metrics, never at test time) are derived from the scene graph.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -5,7 +11,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from qcv.compilers import GrammarCompiler, load_task_grammar
+from qcv.compilers import GrammarCompiler, default_grammar_directory, load_task_grammar
+from qcv.data import default_data_dir
+from qcv.data.download import ensure_file
 from qcv.utils import write_jsonl
 
 
@@ -31,7 +39,7 @@ def execute_program(scene: dict[str, Any], program: list[dict[str, Any]]) -> lis
             relation = str(values[0])
             anchor = int(inputs[0])
             relation_rows = relationships[relation]
-            result = set(int(index) for index in relation_rows[anchor])
+            result = {int(index) for index in relation_rows[anchor]}
         elif function.startswith("same_"):
             attribute = function.removeprefix("same_")
             anchor = int(inputs[0])
@@ -113,36 +121,35 @@ def derive_gold(
     raise ValueError(f"Gold derivation is not defined for compiler rule {rule!r}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Convert official CLEVR JSON files to QCV JSONL")
-    parser.add_argument("--questions", required=True)
-    parser.add_argument("--scenes", required=True)
-    parser.add_argument("--images-dir", required=True)
-    parser.add_argument("--output", required=True)
-    parser.add_argument(
-        "--grammar",
-        default=str(Path(__file__).resolve().parents[1] / "qcv" / "configs" / "clevr.yaml"),
-    )
-    parser.add_argument("--drop-incomplete-gold", action="store_true")
-    args = parser.parse_args()
+def convert(
+    questions_path: Path,
+    scenes_path: Path,
+    images_dir: Path,
+    split: str,
+    grammar: Path,
+    drop_incomplete_gold: bool,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Compile every question of one CLEVR split and attach scene-derived gold answers.
 
-    question_payload = json.loads(Path(args.questions).read_text(encoding="utf-8"))
-    scene_payload = json.loads(Path(args.scenes).read_text(encoding="utf-8"))
-    questions = question_payload["questions"]
+    Returns the records and the counts of questions read, compiled and written.
+    """
+    question_payload = json.loads(questions_path.read_text(encoding="utf-8"))
+    scene_payload = json.loads(scenes_path.read_text(encoding="utf-8"))
     scenes = {scene["image_filename"]: scene for scene in scene_payload["scenes"]}
-    compiler = GrammarCompiler(load_task_grammar(args.grammar))
+    compiler = GrammarCompiler(load_task_grammar(grammar))
     rows: list[dict[str, Any]] = []
-    for question in questions:
+    compiled = 0
+    for position, question in enumerate(question_payload["questions"]):
         image_filename = str(question["image_filename"])
-        instance_id = str(question.get("question_index", len(rows)))
+        instance_id = f"clevr-{split}-{int(question.get('question_index', position)):06d}"
         result = compiler.compile(instance_id, str(question["question"]))
         if result.compiled is None:
             continue
-        gold: dict[str, str] = {}
+        compiled += 1
         try:
             gold = derive_gold(result.compiled, question, scenes[image_filename])
         except (KeyError, ValueError, TypeError):
-            if args.drop_incomplete_gold:
+            if drop_incomplete_gold:
                 continue
             gold = {result.compiled.target.variable: str(question["answer"]).lower()}
         rows.append(
@@ -151,20 +158,48 @@ def main() -> None:
                 "task": "clevr",
                 "question": str(question["question"]),
                 "answer": str(question["answer"]).lower(),
-                "media": {
-                    "type": "image",
-                    "path": str(Path(args.images_dir) / image_filename),
-                },
+                "media": {"type": "image", "path": str(images_dir / image_filename)},
                 "gold": gold,
                 "metadata": {
                     "image_filename": image_filename,
                     "question_family_index": question.get("question_family_index"),
-                    "split": question_payload.get("split"),
+                    "split": question_payload.get("info", {}).get("split", split),
                 },
             }
         )
-    write_jsonl(args.output, rows)
-    print(json.dumps({"written": len(rows)}, indent=2))
+    counts = {"questions": len(question_payload["questions"]), "compiled": compiled}
+    return rows, {**counts, "written": len(rows)}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--split", default="val", choices=["train", "val"])
+    parser.add_argument("--data-dir", help="data directory (default: $QCV_DATA_DIR or ./data)")
+    parser.add_argument("--questions", help="default: <data>/clevr/CLEVR_v1.0/questions/...")
+    parser.add_argument("--scenes", help="default: <data>/clevr/CLEVR_v1.0/scenes/...")
+    parser.add_argument("--images-dir", help="default: <data>/clevr/CLEVR_v1.0/images/<split>")
+    parser.add_argument("--output", help="default: <data>/clevr/clevr_<split>_raw.jsonl")
+    parser.add_argument("--grammar", default=str(default_grammar_directory() / "clevr.yaml"))
+    parser.add_argument("--drop-incomplete-gold", action="store_true")
+    args = parser.parse_args()
+
+    data_dir = default_data_dir(args.data_dir)
+    root = data_dir / "clevr" / "CLEVR_v1.0"
+    questions = Path(args.questions or root / "questions" / f"CLEVR_{args.split}_questions.json")
+    scenes = Path(args.scenes or root / "scenes" / f"CLEVR_{args.split}_scenes.json")
+    images_dir = Path(args.images_dir or root / "images" / args.split)
+    output = Path(args.output or data_dir / "clevr" / f"clevr_{args.split}_raw.jsonl")
+    # Files under the default layout are fetched (questions and scenes only) when absent.
+    if args.questions is None:
+        ensure_file(questions, "clevr", data_dir)
+    if args.scenes is None:
+        ensure_file(scenes, "clevr", data_dir)
+
+    rows, counts = convert(
+        questions, scenes, images_dir, args.split, Path(args.grammar), args.drop_incomplete_gold
+    )
+    write_jsonl(output, rows)
+    print(json.dumps({**counts, "output": str(output)}, indent=2))
 
 
 if __name__ == "__main__":

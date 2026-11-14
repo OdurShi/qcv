@@ -1,4 +1,4 @@
-"""Question-Code Verification (QCV)."""
+"""Question-Code Verification (QCV): test-time correction of multimodal answers."""
 
 from .types import (
     CalibrationArtifacts,

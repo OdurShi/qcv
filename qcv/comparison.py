@@ -1,3 +1,5 @@
+"""Paired statistical comparison of two prediction files on the same examples."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,6 +18,7 @@ def compare_prediction_files(
     bootstrap_replicates: int = 10_000,
     seed: int = 0,
 ) -> dict[str, Any]:
+    """Accuracy difference (first - second), paired bootstrap 95% CI and exact McNemar test."""
     records = load_score_records(score_path)
     first = {item.instance_id: item for item in load_predictions(first_prediction_path)}
     second = {item.instance_id: item for item in load_predictions(second_prediction_path)}
@@ -30,7 +33,9 @@ def compare_prediction_files(
             answers_equal(record.task, first[record.instance_id].final_answer, record.target_answer)
         )
         second_correct.append(
-            answers_equal(record.task, second[record.instance_id].final_answer, record.target_answer)
+            answers_equal(
+                record.task, second[record.instance_id].final_answer, record.target_answer
+            )
         )
     estimate, lower, upper = paired_bootstrap_accuracy_difference(
         first_correct,

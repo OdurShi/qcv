@@ -1,19 +1,30 @@
+"""Typed question compiler.
+
+The compiler maps a target question ``q0`` to an ordered auxiliary pool
+``P(u)`` and executable answer constraints using only the question text and a
+fixed task grammar (a YAML file). It never receives the image, the video or any
+instance-level annotation.
+"""
+
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import yaml
 
-from ..codebook import build_codebook
+from ..codebook import pool_feasible_indices
 from ..types import CompiledInstance, ConstraintSpec, QuestionSpec, RoleSpec
 from ..utils import canonical_decimal, normalize_text
 
 
 @dataclass(frozen=True)
 class TaskGrammar:
+    """Roles (answer alphabets) and rewrite rules of one task."""
+
     task: str
     version: str
     roles: Mapping[str, RoleSpec]
@@ -22,6 +33,8 @@ class TaskGrammar:
 
 @dataclass(frozen=True)
 class CompileResult:
+    """Compiled instance, or ``None`` together with the reason for rejection."""
+
     compiled: CompiledInstance | None
     reason: str
     matching_rules: tuple[str, ...] = ()
@@ -46,7 +59,7 @@ def _expand_alphabet(value: Mapping[str, Any]) -> tuple[str, ...]:
         precision = int(spec["precision"])
         if step <= 0 or stop < start:
             raise ValueError(f"Invalid decimal_range {spec}")
-        count = int(round((stop - start) / step))
+        count = round((stop - start) / step)
         values = [canonical_decimal(start + index * step, precision) for index in range(count + 1)]
         if float(values[-1]) < stop - 10 ** (-(precision + 2)):
             values.append(canonical_decimal(stop, precision))
@@ -55,6 +68,7 @@ def _expand_alphabet(value: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def load_task_grammar(path: str | Path) -> TaskGrammar:
+    """Load a task grammar from YAML and expand its role alphabets."""
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError(f"Grammar {path} must contain a YAML mapping")
@@ -91,7 +105,13 @@ def _format_nested(value: Any, bindings: Mapping[str, str]) -> Any:
 
 
 class GrammarCompiler:
-    """Deterministic text-only compiler with unique regex matching."""
+    """Deterministic text-only compiler.
+
+    A question compiles iff exactly one rule pattern matches its normalised
+    text. Auxiliaries are ordered by template index (then text), duplicates of
+    the target or of an earlier auxiliary are dropped, and the instance is
+    rejected when the pool-level feasible code is empty.
+    """
 
     def __init__(self, grammar: TaskGrammar):
         self.grammar = grammar
@@ -114,7 +134,9 @@ class GrammarCompiler:
             return CompileResult(None, "ambiguous_schema_match", names)
 
         rule, match = matches[0]
-        bindings = {key: value.strip() for key, value in match.groupdict().items() if value is not None}
+        bindings = {
+            key: value.strip() for key, value in match.groupdict().items() if value is not None
+        }
         bindings["question"] = question.strip()
         target_spec = dict(rule["target"])
         target_role_name = str(target_spec["role"])
@@ -193,8 +215,7 @@ class GrammarCompiler:
                 bindings=bindings,
                 compiler_version=self.grammar.version,
             )
-            full_codebook = build_codebook(compiled, compiled.all_questions)
-            if full_codebook.codewords.shape[0] == 0:
+            if pool_feasible_indices(compiled).shape[0] == 0:
                 return CompileResult(None, "empty_feasible_code", names)
         except (KeyError, ValueError) as exc:
             return CompileResult(None, f"validation_error:{type(exc).__name__}:{exc}", names)
