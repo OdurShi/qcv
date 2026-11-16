@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below."
+title: "Question-Code Verification (QCV)"
+type: software
+license: MIT
+repository-code: "https://github.com/OdurShi/qcv"
+authors:
+  - family-names: Chen
+    given-names: J.
+  - family-names: Zhang
+    given-names: M.
+  - family-names: Shi
+    given-names: S.
+  - family-names: Zhang
+    given-names: H.
+  - family-names: Sun
+    given-names: X.
+  - family-names: Zhang
+    given-names: X.
+preferred-citation:
+  type: conference-paper
+  title: "Questions as Codes: Correcting Multimodal Reasoning at Test Time"
+  authors:
+    - family-names: Chen
+      given-names: J.
+    - family-names: Zhang
+      given-names: M.
+    - family-names: Shi
+      given-names: S.
+    - family-names: Zhang
+      given-names: H.
+    - family-names: Sun
+      given-names: X.
+    - family-names: Zhang
+      given-names: X.
+  collection-title: "Proceedings of the AAAI Conference on Artificial Intelligence"
+  collection-type: proceedings
+  conference:
+    name: "AAAI Conference on Artificial Intelligence (AAAI 2027)"
+  year: 2027

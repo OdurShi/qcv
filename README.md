@@ -1,8 +1,8 @@
 # Questions as Codes: Correcting Multimodal Reasoning at Test Time
 
-Official implementation of **Question-Code Verification (QCV)**: a test-time procedure that spends a fixed budget of question evaluations on relation-linked auxiliary questions and corrects the answer of a frozen vision-language model by projecting calibrated answer distributions onto a code of jointly valid answers.
+Official implementation of **Question-Code Verification (QCV)** (AAAI 2027): a test-time procedure that spends a fixed budget of question evaluations on relation-linked auxiliary questions and corrects the answer of a frozen vision-language model by projecting calibrated answer distributions onto a code of jointly valid answers.
 
-![paper](https://img.shields.io/badge/paper-under%20review-lightgrey)
+![paper](https://img.shields.io/badge/paper-AAAI%202027-blue)
 ![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![CI](https://github.com/OdurShi/qcv/actions/workflows/ci.yml/badge.svg)](https://github.com/OdurShi/qcv/actions/workflows/ci.yml)
@@ -267,7 +267,16 @@ docs/implementation_notes.md   paper-to-code map, implementation choices, record
 
 ## Citation
 
-The paper is under review. A BibTeX entry will be added here on publication.
+The paper is accepted to the AAAI Conference on Artificial Intelligence (AAAI 2027).
+
+```bibtex
+@inproceedings{chen2027qcv,
+  title     = {Questions as Codes: Correcting Multimodal Reasoning at Test Time},
+  author    = {Chen, J. and Zhang, M. and Shi, S. and Zhang, H. and Sun, X. and Zhang, X.},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  year      = {2027}
+}
+```
 
 ## License
 
